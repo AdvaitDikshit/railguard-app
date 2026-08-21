@@ -89,5 +89,7 @@ class ReportSummaryOut(BaseModel):
     ai_severity: Optional[str] = None
     detection_count: Optional[int] = None
     annotated_url: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
 
     model_config = {"from_attributes": True}

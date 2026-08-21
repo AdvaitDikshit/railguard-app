@@ -53,4 +53,6 @@ export interface ReportSummary {
   ai_severity: string | null;
   detection_count: number | null;
   annotated_url: string | null;
+  lat: number | null;
+  lng: number | null;
 }

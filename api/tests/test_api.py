@@ -63,6 +63,20 @@ def test_report_appears_in_list(client, sample_image_bytes):
     assert report_id in ids
 
 
+def test_report_list_includes_location_for_map_view(client, sample_image_bytes):
+    """GET /api/reports must carry lat/lng — the /map page's only data source."""
+    client.post(
+        "/api/reports",
+        files={"file": ("t.jpg", sample_image_bytes, "image/jpeg")},
+        data={"lat": "18.5679", "lng": "73.9143"},
+    )
+    r = client.get("/api/reports")
+    located = [x for x in r.json() if x["lat"] is not None]
+    assert len(located) >= 1
+    assert located[0]["lat"] == 18.5679
+    assert located[0]["lng"] == 73.9143
+
+
 def test_get_report_by_id(client, sample_image_bytes):
     create = client.post("/api/reports", files={"file": ("t.jpg", sample_image_bytes, "image/jpeg")})
     report_id = create.json()["id"]

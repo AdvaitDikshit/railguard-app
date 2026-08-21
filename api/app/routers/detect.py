@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from ..config import API_DIR, settings
 from ..detector_service import get_detector
 from ..ratelimit import limiter
-from ..validation import ValidationError, validate_image_bytes
+from ..validation import ValidationError, sanitize_image_bytes, validate_image_bytes
 
 router = APIRouter(prefix="/api", tags=["detect"])
 
@@ -29,13 +29,14 @@ TMP_DIR.mkdir(parents=True, exist_ok=True)
 async def api_detect(request: Request, file: UploadFile = File(...)):
     raw = await file.read()
     try:
-        validate_image_bytes(raw, file.filename or "upload")
+        fmt = validate_image_bytes(raw, file.filename or "upload")
+        sanitized = sanitize_image_bytes(raw, fmt)
     except ValidationError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
 
     ext = Path(file.filename or "upload.jpg").suffix.lower()
     tmp_path = TMP_DIR / f"{uuid.uuid4().hex}{ext}"
-    tmp_path.write_bytes(raw)
+    tmp_path.write_bytes(sanitized)
 
     try:
         detector = get_detector()

@@ -12,7 +12,7 @@ upload endpoint.
 import io
 from pathlib import Path
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from .config import settings
 
@@ -75,3 +75,29 @@ def validate_image_bytes(raw: bytes, filename: str) -> str:
         )
 
     return fmt
+
+
+def sanitize_image_bytes(raw: bytes, fmt: str) -> bytes:
+    """
+    Re-encodes the image through PIL before it's ever written to disk —
+    this is what actually strips EXIF (including embedded GPS, which
+    could otherwise leak a reporter's location beyond whatever they
+    explicitly submitted in the lat/lng form fields) and any other
+    metadata, since PIL's encoders don't carry EXIF forward unless
+    explicitly told to. A full re-encode also discards anything hiding
+    outside the actual pixel data.
+
+    The EXIF Orientation tag is applied to the pixels first (via
+    exif_transpose) so a phone photo doesn't visually rotate 90° once
+    its orientation metadata is gone.
+    """
+    img = Image.open(io.BytesIO(raw))
+    img = ImageOps.exif_transpose(img)
+
+    if fmt == "JPEG" and img.mode in ("RGBA", "P", "LA"):
+        img = img.convert("RGB")  # JPEG has no alpha/palette support
+
+    out = io.BytesIO()
+    save_kwargs = {"quality": 92} if fmt == "JPEG" else {}
+    img.save(out, format=fmt, **save_kwargs)
+    return out.getvalue()

@@ -22,7 +22,7 @@ from ..database import get_db
 from ..detector_service import get_detector
 from ..pdf_service import build_report_pdf
 from ..ratelimit import limiter
-from ..validation import ValidationError, validate_image_bytes
+from ..validation import ValidationError, sanitize_image_bytes, validate_image_bytes
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
@@ -70,14 +70,18 @@ async def create_report(
 ):
     raw = await file.read()
     try:
-        validate_image_bytes(raw, file.filename or "upload")
+        fmt = validate_image_bytes(raw, file.filename or "upload")
+        sanitized = sanitize_image_bytes(raw, fmt)
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     ext = Path(file.filename or "upload.jpg").suffix.lower()
     stored_name = f"{uuid.uuid4().hex}{ext}"
     stored_path = UPLOAD_DIR / stored_name
-    stored_path.write_bytes(raw)
+    # Store the sanitized (EXIF-stripped) bytes, never the original —
+    # a phone photo's embedded GPS could otherwise leak a location
+    # beyond whatever was explicitly submitted in the lat/lng fields.
+    stored_path.write_bytes(sanitized)
 
     try:
         detector = get_detector()
@@ -150,6 +154,8 @@ def list_reports(db: Session = Depends(get_db), limit: int = 50, offset: int = 0
             ai_severity=r.severity.ai_severity if r.severity else None,
             detection_count=r.severity.ai_detection_count if r.severity else None,
             annotated_url=f"/media/results/{Path(annotated.storage_path).name}" if annotated else None,
+            lat=r.location.lat if r.location else None,
+            lng=r.location.lng if r.location else None,
         ))
     return out
 

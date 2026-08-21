@@ -13,6 +13,9 @@ export function TopBar() {
         <Link href="/history" className="hover:text-ink">
           History
         </Link>
+        <Link href="/map" className="hover:text-ink">
+          Map
+        </Link>
         <Link href="/how-it-works" className="hover:text-ink">
           How it works
         </Link>

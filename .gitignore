@@ -6,6 +6,8 @@
 # dumps. See scripts/download_dataset.py to fetch the dataset instead.
 dataset/
 runs/
+models/
+logs/
 *.pt
 
 # ── User-submitted / generated content ─────────────────────────
