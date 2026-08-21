@@ -14,7 +14,7 @@ export function TrackScanHero() {
       <p className="font-mono text-[10px] uppercase tracking-wider text-ink-soft">
         AI-assisted railway track inspection
       </p>
-      <div className="relative mt-3 h-[90px] w-full max-w-3xl overflow-hidden">
+      <div className="relative mt-3 h-[90px] w-full overflow-hidden">
         <RailArt className="h-full w-full" />
 
         <div className="track-scan-line absolute left-0 top-[14px] h-[62px] w-[2px] bg-accent shadow-[0_0_8px_rgba(163,24,42,0.55)]" />
