@@ -44,6 +44,7 @@ export interface Report {
   location: Location | null;
   severity: Severity | null;
   detections: Detection[];
+  cluster_id: string | null;
 }
 
 export interface ReportSummary {

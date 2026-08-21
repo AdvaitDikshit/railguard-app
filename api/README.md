@@ -68,9 +68,10 @@ testing only — production should run on Postgres as specified.
 | Method | Path                        | Purpose                                                        |
 |--------|-----------------------------|------------------------------------------------------------------|
 | POST   | `/api/detect`               | Stateless detection — validate, run YOLO, return result, no save |
-| POST   | `/api/reports`              | Full pipeline: validate → detect → persist report + GPS          |
-| GET    | `/api/reports`              | List recent reports (paginated)                                  |
+| POST   | `/api/reports`              | Full pipeline: validate → detect → dedup check → persist report + GPS |
+| GET    | `/api/reports`              | List recent reports (paginated), each carrying lat/lng for the map view |
 | GET    | `/api/reports/{id}`         | Fetch one report, including detections/location/severity         |
+| GET    | `/api/reports/{id}/cluster` | All reports believed to be the same physical defect as this one (see Duplicate detection below) |
 | POST   | `/api/reports/{id}/verify`  | Record a human engineering assessment — requires `X-Admin-Token` header (see below) |
 | GET    | `/api/reports/{id}/pdf`     | Generate and download the evidence PDF                           |
 | GET    | `/health`                   | Liveness check                                                   |
@@ -85,6 +86,22 @@ curl -X POST http://localhost:8000/api/reports \
   -F "lng=73.9143" \
   -F "accuracy_m=12.5"
 ```
+
+## Duplicate detection
+
+If N people photograph the same physical crack, `POST /api/reports`
+recognizes later submissions as the same defect instead of creating N
+independent reports — see `app/dedup.py`. The rule: a 64-bit average
+hash of the image (no extra dependency, computed with PIL) combined
+with GPS proximity (within 75m). If either report is missing GPS, it
+falls back to hash-only matching with a much stricter threshold. A
+matched report gets `status: "duplicate"` and `cluster_id` pointing at
+the original ("leader") report; `GET /api/reports/{id}/cluster` lists
+every report in that cluster from either member's id.
+
+This is a simple, explainable heuristic — not a learned embedding
+model — which is the right tradeoff at this project's scale: it's easy
+to reason about why two reports were (or weren't) linked.
 
 ## Verifying a report (admin)
 

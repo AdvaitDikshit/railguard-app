@@ -78,6 +78,8 @@ class ReportOut(BaseModel):
     location: Optional[LocationOut] = None
     severity: Optional[SeverityOut] = None
     detections: List[DetectionOut] = []
+    cluster_id: Optional[str] = None  # set when this report was matched as a
+                                       # duplicate of an earlier one — see dedup.py
 
     model_config = {"from_attributes": True}
 

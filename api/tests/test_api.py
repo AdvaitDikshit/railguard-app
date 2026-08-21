@@ -152,3 +152,73 @@ def test_report_pdf_is_a_real_pdf(client, sample_image_bytes):
     assert r.status_code == 200
     assert r.content[:4] == b"%PDF"
     assert len(r.content) > 1000
+
+
+# ── Duplicate detection ────────────────────────────────────────────
+
+def _jpeg(color, size=(120, 90)):
+    buf = io.BytesIO()
+    Image.new("RGB", size, color=color).save(buf, format="JPEG")
+    return buf.getvalue()
+
+
+def test_near_identical_photo_at_same_location_is_flagged_duplicate(client):
+    """The exact 'N people photograph the same crack' scenario."""
+    first = client.post(
+        "/api/reports",
+        files={"file": ("a.jpg", _jpeg((110, 100, 90)), "image/jpeg")},
+        data={"lat": "18.5679", "lng": "73.9143"},
+    )
+    assert first.json()["status"] == "submitted"
+    assert first.json()["cluster_id"] is None
+    leader_id = first.json()["id"]
+
+    # A second, near-identical photo (same color, same scene) from a
+    # nearby vantage point.
+    second = client.post(
+        "/api/reports",
+        files={"file": ("b.jpg", _jpeg((112, 101, 89)), "image/jpeg")},
+        data={"lat": "18.5680", "lng": "73.9144"},  # ~15m away
+    )
+    assert second.json()["status"] == "duplicate"
+    assert second.json()["cluster_id"] == leader_id
+
+
+def test_different_photo_far_away_is_not_flagged_duplicate(client):
+    client.post(
+        "/api/reports",
+        files={"file": ("a.jpg", _jpeg((110, 100, 90)), "image/jpeg")},
+        data={"lat": "18.5679", "lng": "73.9143"},
+    )
+    far_away = client.post(
+        "/api/reports",
+        files={"file": ("c.jpg", _jpeg((10, 200, 30)), "image/jpeg")},  # visually different
+        data={"lat": "19.0760", "lng": "72.8777"},  # Mumbai — genuinely far
+    )
+    assert far_away.json()["status"] == "submitted"
+    assert far_away.json()["cluster_id"] is None
+
+
+def test_cluster_endpoint_lists_all_matched_reports(client):
+    first = client.post(
+        "/api/reports",
+        files={"file": ("a.jpg", _jpeg((80, 80, 80)), "image/jpeg")},
+        data={"lat": "18.50", "lng": "73.90"},
+    )
+    leader_id = first.json()["id"]
+    second = client.post(
+        "/api/reports",
+        files={"file": ("b.jpg", _jpeg((82, 81, 79)), "image/jpeg")},
+        data={"lat": "18.5001", "lng": "73.9001"},
+    )
+    dup_id = second.json()["id"]
+    assert second.json()["cluster_id"] == leader_id
+
+    # Fetching the cluster from EITHER member's id returns both.
+    r = client.get(f"/api/reports/{leader_id}/cluster")
+    assert r.status_code == 200
+    ids = {x["id"] for x in r.json()}
+    assert ids == {leader_id, dup_id}
+
+    r2 = client.get(f"/api/reports/{dup_id}/cluster")
+    assert {x["id"] for x in r2.json()} == {leader_id, dup_id}

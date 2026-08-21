@@ -40,6 +40,13 @@ class Report(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
+    # Duplicate-report clustering (see ../dedup.py). NULL until a match is
+    # found; once found, every report in the cluster shares the *first*
+    # report's id as cluster_id (that report's own cluster_id stays NULL —
+    # it's the leader). A report with cluster_id set and status="duplicate"
+    # is a re-report of an already-known physical defect, not a new one.
+    cluster_id = Column(String(32), ForeignKey("reports.id"), nullable=True)
+
     media = relationship("Media", back_populates="report", cascade="all, delete-orphan")
     detections = relationship("Detection", back_populates="report", cascade="all, delete-orphan")
     location = relationship("Location", back_populates="report", uselist=False, cascade="all, delete-orphan")
@@ -56,6 +63,7 @@ class Media(Base):
     content_type = Column(String(50), nullable=True)
     width = Column(Integer, nullable=True)
     height = Column(Integer, nullable=True)
+    phash = Column(String(16), nullable=True)  # 64-bit average hash, hex-encoded — see ../dedup.py
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     report = relationship("Report", back_populates="media")

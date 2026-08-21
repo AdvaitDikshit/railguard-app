@@ -19,6 +19,7 @@ from .. import models, schemas
 from ..auth import require_admin
 from ..config import API_DIR, PROJECT_ROOT, settings
 from ..database import get_db
+from ..dedup import compute_phash, find_duplicate_of
 from ..detector_service import get_detector
 from ..pdf_service import build_report_pdf
 from ..ratelimit import limiter
@@ -46,6 +47,7 @@ def _to_report_out(report: models.Report) -> schemas.ReportOut:
         annotated_url=f"/media/results/{Path(annotated.storage_path).name}" if annotated else None,
         location=schemas.LocationOut.model_validate(report.location) if report.location else None,
         severity=schemas.SeverityOut.model_validate(report.severity) if report.severity else None,
+        cluster_id=report.cluster_id,
         detections=[
             schemas.DetectionOut(
                 class_name=d.class_name, confidence=d.confidence,
@@ -89,14 +91,26 @@ async def create_report(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Detection failed: {e}")
 
-    report = models.Report(source=source, original_filename=file.filename)
+    # Duplicate check BEFORE creating this report's row, so the query
+    # only sees previously-committed reports — see ../dedup.py for the
+    # matching rule (GPS proximity + perceptual hash, or hash-only with
+    # a stricter bar when either side lacks GPS).
+    phash = compute_phash(sanitized)
+    duplicate_of = find_duplicate_of(db, phash, lat, lng)
+
+    report = models.Report(
+        source=source,
+        original_filename=file.filename,
+        status="duplicate" if duplicate_of else "submitted",
+        cluster_id=duplicate_of.id if duplicate_of else None,
+    )
     db.add(report)
     db.flush()  # obtain report.id before attaching children
 
     db.add(models.Media(
         report_id=report.id, role="original", storage_path=str(stored_path),
         content_type=file.content_type, width=result["image_size"]["width"],
-        height=result["image_size"]["height"],
+        height=result["image_size"]["height"], phash=phash,
     ))
 
     ann_rel = result["annotated_image"]  # e.g. "results/result_xxx.jpg"
@@ -166,6 +180,40 @@ def get_report(report_id: str, db: Session = Depends(get_db)):
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     return _to_report_out(report)
+
+
+@router.get("/{report_id}/cluster", response_model=list[schemas.ReportSummaryOut])
+def get_cluster(report_id: str, db: Session = Depends(get_db)):
+    """
+    All reports believed to be the same physical defect as this one —
+    the report itself (whether it's the cluster leader or a duplicate of
+    one), plus every other report that matched it. Lets a reviewer see
+    "this crack has been reported 6 times" instead of 6 disconnected rows.
+    """
+    report = db.get(models.Report, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    leader_id = report.cluster_id or report.id
+    siblings = (
+        db.query(models.Report)
+        .filter((models.Report.id == leader_id) | (models.Report.cluster_id == leader_id))
+        .order_by(models.Report.created_at.asc())
+        .all()
+    )
+
+    out = []
+    for r in siblings:
+        annotated = next((m for m in r.media if m.role == "annotated"), None)
+        out.append(schemas.ReportSummaryOut(
+            id=r.id, status=r.status, created_at=r.created_at,
+            ai_severity=r.severity.ai_severity if r.severity else None,
+            detection_count=r.severity.ai_detection_count if r.severity else None,
+            annotated_url=f"/media/results/{Path(annotated.storage_path).name}" if annotated else None,
+            lat=r.location.lat if r.location else None,
+            lng=r.location.lng if r.location else None,
+        ))
+    return out
 
 
 @router.post("/{report_id}/verify", response_model=schemas.SeverityOut, dependencies=[Depends(require_admin)])

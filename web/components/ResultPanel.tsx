@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { Report } from "@/lib/types";
 import { SEVERITY_COLOR, severityLabel } from "@/lib/severity";
 import { pdfUrl } from "@/lib/api";
@@ -35,6 +36,19 @@ export function ResultPanel({
 
   return (
     <div className="flex h-full flex-col gap-5 overflow-y-auto px-4 py-5">
+      {report.status === "duplicate" && report.cluster_id && (
+        <div className="border-l-2 border-sev-moderate bg-accent-soft px-3 py-2">
+          <p className="text-[12px] font-medium text-ink">Likely a repeat report</p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-ink-soft">
+            This looks like the same physical defect as an earlier report, based on
+            location and image similarity.{" "}
+            <Link href={`/report/${report.cluster_id}`} className="text-steel underline">
+              View original report →
+            </Link>
+          </p>
+        </div>
+      )}
+
       <div>
         <p className="font-mono text-[10px] uppercase tracking-wider text-ink-soft">Severity (AI-estimated)</p>
         <p className={`mt-1 border-l-2 pl-2 text-[22px] font-semibold leading-none ${colorClass}`}>

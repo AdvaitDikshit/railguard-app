@@ -97,11 +97,19 @@ def _install_stub_detector():
 _install_stub_detector()
 
 from fastapi.testclient import TestClient  # noqa: E402
+from app.database import Base, engine  # noqa: E402
 from app.main import app  # noqa: E402
 
 
 @pytest.fixture()
 def client():
+    # The sqlite FILE persists across the whole test session (see the
+    # :memory: connection-pooling note above) — without an explicit
+    # wipe here, later tests would see earlier tests' rows. That was
+    # harmless before, but duplicate-detection logic (dedup.py) is
+    # exactly the kind of test that depends on starting from nothing.
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
     with TestClient(app) as c:
         yield c
 
