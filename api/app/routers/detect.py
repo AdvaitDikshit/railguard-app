@@ -13,7 +13,7 @@ from pathlib import Path
 from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import JSONResponse
 
-from ..config import API_DIR
+from ..config import API_DIR, settings
 from ..detector_service import get_detector
 from ..ratelimit import limiter
 from ..validation import ValidationError, validate_image_bytes
@@ -25,7 +25,7 @@ TMP_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @router.post("/detect")
-@limiter.limit("10/minute")
+@limiter.limit(settings.rate_limit_detect)
 async def api_detect(request: Request, file: UploadFile = File(...)):
     raw = await file.read()
     try:

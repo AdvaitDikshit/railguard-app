@@ -71,7 +71,7 @@ testing only — production should run on Postgres as specified.
 | POST   | `/api/reports`              | Full pipeline: validate → detect → persist report + GPS          |
 | GET    | `/api/reports`              | List recent reports (paginated)                                  |
 | GET    | `/api/reports/{id}`         | Fetch one report, including detections/location/severity         |
-| POST   | `/api/reports/{id}/verify`  | Record a human engineering assessment (separate from AI fields)  |
+| POST   | `/api/reports/{id}/verify`  | Record a human engineering assessment — requires `X-Admin-Token` header (see below) |
 | GET    | `/api/reports/{id}/pdf`     | Generate and download the evidence PDF                           |
 | GET    | `/health`                   | Liveness check                                                   |
 
@@ -86,12 +86,30 @@ curl -X POST http://localhost:8000/api/reports \
   -F "accuracy_m=12.5"
 ```
 
+## Verifying a report (admin)
+
+`POST /api/reports/{id}/verify` requires an `X-Admin-Token` header
+matching `ADMIN_TOKEN` in `.env`. Generate a token with:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+If `ADMIN_TOKEN` is unset, the endpoint fails closed (503) rather than
+silently allowing writes. This is a single shared token, not a user
+account system — proportionate to gating one write path, not a reason
+to add full auth to the rest of the (intentionally anonymous) public
+reporting flow.
+
+```bash
+curl -X POST http://localhost:8000/api/reports/{id}/verify \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-Token: <your token>" \
+  -d '{"engineering_severity":"HIGH","engineering_notes":"...","verified_by":"J. Rao"}'
+```
+
 ## What's intentionally NOT done here
 
-- **No authentication.** `/api/reports/{id}/verify` (the human
-  verification endpoint) must be placed behind real auth before any
-  public launch — it's open here because auth wasn't in this
-  implementation batch.
 - **No video support** — image-only, per the current scope.
 - **No duplicate-report clustering** — every submission creates a new
   report row; the geo/perceptual-hash dedup engine is a later phase.

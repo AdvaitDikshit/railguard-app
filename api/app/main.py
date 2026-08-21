@@ -11,6 +11,8 @@ Run:
     uvicorn app.main:app --reload --port 8000
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -22,7 +24,17 @@ from .database import Base, engine
 from .ratelimit import limiter
 from .routers import detect, reports
 
-app = FastAPI(title="RailGuard API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # MVP: create tables directly on startup. A real migration tool
+    # (Alembic) should replace this before the schema needs to evolve
+    # under live data.
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
+app = FastAPI(title="RailGuard API", version="0.1.0", lifespan=lifespan)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -43,13 +55,6 @@ app.include_router(reports.router)
 # project's static/results directory and served from there unchanged.
 app.mount("/media/uploads", StaticFiles(directory=str(PROJECT_ROOT / "api" / "storage" / "uploads")), name="uploads")
 app.mount("/media/results", StaticFiles(directory=str(PROJECT_ROOT / "static" / "results")), name="results")
-
-
-@app.on_event("startup")
-def on_startup():
-    # MVP: create tables directly. A real migration tool (Alembic) should
-    # replace this before the schema needs to evolve under live data.
-    Base.metadata.create_all(bind=engine)
 
 
 @app.get("/health")

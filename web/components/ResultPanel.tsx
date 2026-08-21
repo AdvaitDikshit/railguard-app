@@ -97,6 +97,31 @@ export function ResultPanel({
         </div>
       )}
 
+      <div>
+        <p className="font-mono text-[10px] uppercase tracking-wider text-ink-soft">Engineering assessment</p>
+        {sev.engineering_severity ? (
+          <div className="mt-1 border-l-2 border-sev-low pl-2">
+            <p className="text-[13px] font-semibold text-ink">{severityLabel(sev.engineering_severity)}</p>
+            <p className="mt-0.5 font-mono text-[11px] text-ink-soft">
+              Verified by {sev.verified_by}
+              {sev.verified_at ? ` · ${new Date(sev.verified_at).toLocaleDateString()}` : ""}
+            </p>
+            {sev.engineering_notes && (
+              <p className="mt-1 text-[12px] leading-relaxed text-ink">{sev.engineering_notes}</p>
+            )}
+          </div>
+        ) : (
+          <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
+            Not yet reviewed by a qualified engineer or authorized railway personnel.
+          </p>
+        )}
+      </div>
+
+      <div className="border-t border-rule pt-3 font-mono text-[11px] text-ink-soft">
+        <p>✓ Submitted to platform</p>
+        <p>— Authority notified: <span className="text-ink">No verified channel connected</span></p>
+      </div>
+
       <a
         href={pdfUrl(report.id)}
         target="_blank"

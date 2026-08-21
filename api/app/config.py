@@ -46,6 +46,13 @@ class Settings(BaseSettings):
     # ── Optional Claude AI-analysis passthrough (unchanged from ai_analysis.py) ──
     anthropic_api_key: str = ""
 
+    # ── Admin auth ──────────────────────────────────────────────
+    # Gates POST /api/reports/{id}/verify — the one endpoint that records
+    # a human engineering assessment and must not be publicly writable.
+    # Empty by default so a misconfigured deployment fails CLOSED (every
+    # verify request is rejected) rather than accidentally open.
+    admin_token: str = ""
+
     @property
     def cors_origin_list(self) -> List[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

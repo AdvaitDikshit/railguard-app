@@ -17,7 +17,11 @@ from ultralytics import YOLO
 # ─────────────────────────────────────────────────────────────
 
 BASE_DIR    = Path(__file__).parent.parent
-DATASET_DIR = BASE_DIR / "dataset" / "merged"
+# Points at the leak-free resplit (dataset/merged/ had 32.1% of source
+# images' augmented copies crossing train/valid/test — see
+# scripts/fix_split_leakage.py). This is the dataset the baseline
+# should be measured against.
+DATASET_DIR = BASE_DIR / "dataset" / "merged_resplit"
 MODELS_DIR  = BASE_DIR / "models"
 
 CONFIG = {
@@ -27,7 +31,9 @@ CONFIG = {
 
     "epochs":         100,       # increase for better accuracy (try 150-300)
     "imgsz":          640,       # input image size (keep 640 for best results)
-    "batch":          16,        # reduce to 8 if GPU runs out of memory
+    "batch":          -1,        # auto-batch: Ultralytics picks the largest safe
+                                  # batch for available VRAM (~60% util target) —
+                                  # safer than a fixed guess on a 6GB card
     "patience":       20,        # early stopping patience
     "lr0":            0.01,      # initial learning rate
     "lrf":            0.01,      # final learning rate factor

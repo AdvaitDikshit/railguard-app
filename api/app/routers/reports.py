@@ -16,7 +16,8 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..config import API_DIR, PROJECT_ROOT
+from ..auth import require_admin
+from ..config import API_DIR, PROJECT_ROOT, settings
 from ..database import get_db
 from ..detector_service import get_detector
 from ..pdf_service import build_report_pdf
@@ -56,7 +57,7 @@ def _to_report_out(report: models.Report) -> schemas.ReportOut:
 
 
 @router.post("", response_model=schemas.ReportOut)
-@limiter.limit("6/minute")
+@limiter.limit(settings.rate_limit_report)
 async def create_report(
     request: Request,
     file: UploadFile = File(...),
@@ -161,14 +162,14 @@ def get_report(report_id: str, db: Session = Depends(get_db)):
     return _to_report_out(report)
 
 
-@router.post("/{report_id}/verify", response_model=schemas.SeverityOut)
+@router.post("/{report_id}/verify", response_model=schemas.SeverityOut, dependencies=[Depends(require_admin)])
 def verify_report(report_id: str, body: schemas.VerifyIn, db: Session = Depends(get_db)):
     """
     Records a qualified human's engineering assessment. This is the ONLY
     write path for engineering_* fields — the AI pipeline never touches
-    them, and this endpoint never touches ai_* fields. Deploy this behind
-    real authentication before any public launch; it is intentionally
-    open here since auth wasn't in this implementation batch.
+    them, and this endpoint never touches ai_* fields. Gated by a single
+    shared admin token (see ../auth.py) — a real user-account system
+    would be overkill for this one endpoint at this project's scale.
     """
     report = db.get(models.Report, report_id)
     if not report:
@@ -191,7 +192,7 @@ def verify_report(report_id: str, body: schemas.VerifyIn, db: Session = Depends(
 
 
 @router.get("/{report_id}/pdf")
-@limiter.limit("20/minute")
+@limiter.limit(settings.rate_limit_pdf)
 def report_pdf(request: Request, report_id: str, db: Session = Depends(get_db)):
     report = db.get(models.Report, report_id)
     if not report:
