@@ -1,0 +1,17 @@
+# RailGuard API service — additive to the root requirements.txt, which
+# still covers the original Flask app / training scripts unchanged.
+#
+# ultralytics / torch / opencv-python are NOT repeated here — install
+# the root requirements.txt first (this service imports detector.py,
+# which needs them).
+
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9        # required by FastAPI for UploadFile/Form parsing
+sqlalchemy>=2.0.30
+psycopg2-binary>=2.9.9         # Postgres driver
+pydantic-settings>=2.3.0
+slowapi>=0.1.9                 # rate limiting
+reportlab>=4.0.0                # PDF generation (also in root requirements.txt)
+Pillow>=10.0.0                  # content-based image validation (also in root requirements.txt)
+python-dotenv>=1.0.0

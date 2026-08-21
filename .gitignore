@@ -1,0 +1,44 @@
+# ── Datasets & training artifacts ──────────────────────────────
+# Never committed — large binary files, and dataset/ specifically
+# contains dataset/removed_watermarked/ (quarantined stock-photo
+# images kept OUT of any public distribution on purpose) plus
+# dataset/watermark_scan/ and dataset/tighten_review/ investigation
+# dumps. See scripts/download_dataset.py to fetch the dataset instead.
+dataset/
+runs/
+*.pt
+
+# ── User-submitted / generated content ─────────────────────────
+static/uploads/
+static/results/
+static/history.json
+api/storage/uploads/*
+api/storage/tmp/*
+!api/storage/uploads/.gitkeep
+!api/storage/tmp/.gitkeep
+
+# ── Python ──────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+
+# ── Secrets & local env ─────────────────────────────────────────
+.env
+api/.env
+web/.env.local
+*.db
+api/*.db
+
+# ── Node / Next.js (web/) ───────────────────────────────────────
+web/node_modules/
+web/.next/
+web/out/
+web/*.tsbuildinfo
+web/next-env.d.ts
+
+# ── OS / editor ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

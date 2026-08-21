@@ -1,0 +1,17 @@
+# Local Postgres for development. Run: docker compose up -d
+# Matches the default DATABASE_URL in .env.example.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: railguard
+      POSTGRES_PASSWORD: railguard
+      POSTGRES_DB: railguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - railguard_pgdata:/var/lib/postgresql/data
+
+volumes:
+  railguard_pgdata:

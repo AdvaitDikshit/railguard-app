@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Railway track Crack Detection</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+
+  .header { background: #161b22; border-bottom: 1px solid #30363d; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 1.4rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px; }
+  .header h1 span { color: #58a6ff; }
+  .status { font-size: 0.78rem; color: #8b949e; }
+  .dot { display: inline-block; width: 8px; height: 8px; background: #3fb950; border-radius: 50%; margin-right: 6px; animation: blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .main { max-width: 1200px; margin: 0 auto; padding: 28px 24px; display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+  @media(max-width:850px){ .main { grid-template-columns: 1fr; } }
+
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
+  .card-header { background: #1c2128; border-bottom: 1px solid #30363d; padding: 12px 20px; font-size: 0.82rem; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 8px; }
+  .card-body { padding: 20px; }
+
+  /* ── TABS ── */
+  .tab-bar { display: flex; background: #1c2128; border-bottom: 1px solid #30363d; }
+  .tab-btn { flex: 1; padding: 11px 8px; font-size: 0.8rem; font-weight: 600; color: #8b949e; cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; transition: all .15s; letter-spacing: 0.04em; }
+  .tab-btn:hover { color: #c9d1d9; }
+  .tab-btn.active { color: #58a6ff; border-bottom-color: #58a6ff; }
+  .tab-pane { display: none; padding: 20px; }
+  .tab-pane.active { display: block; }
+
+  /* ── DROP ZONE ── */
+  #drop-zone { border: 2px dashed #30363d; border-radius: 8px; padding: 50px 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: rgba(88,166,255,.02); }
+  #drop-zone:hover, #drop-zone.over { border-color: #58a6ff; background: rgba(88,166,255,.06); }
+  #drop-zone .icon { font-size: 3rem; }
+  #drop-zone h3 { font-size: 1.1rem; color: #c9d1d9; margin: 12px 0 8px; }
+  #drop-zone p { color: #8b949e; font-size: 0.88rem; }
+  .formats { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+  .fmt { background: #1c2128; border: 1px solid #30363d; border-radius: 4px; padding: 3px 10px; font-size: 0.72rem; color: #8b949e; }
+  #file-input { display: none; }
+
+  /* ── CAMERA ── */
+  .cam-wrap { text-align: center; }
+  #cam-video { width: 100%; max-height: 300px; border-radius: 8px; border: 1px solid #30363d; background: #000; display: none; }
+  #cam-canvas { display: none; }
+  .cam-idle { padding: 32px 16px; }
+  .cam-idle .cam-big { font-size: 3rem; margin-bottom: 12px; }
+  .cam-idle h3 { font-size: 1rem; font-weight: 600; color: #c9d1d9; margin-bottom: 6px; }
+  .cam-idle p { font-size: 0.82rem; color: #8b949e; margin-bottom: 20px; }
+
+  /* ── HTTPS WARNING ── */
+  .https-warn { background: rgba(240,136,62,.1); border: 1px solid rgba(240,136,62,.3); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; font-size: 0.82rem; color: #ffa657; display: none; line-height: 1.5; }
+  .https-warn strong { display: block; margin-bottom: 4px; }
+
+  .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .btn-cam { background: #1c2128; border: 1px solid #30363d; border-radius: 8px; color: #c9d1d9; padding: 10px 18px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 7px; }
+  .btn-cam:hover { background: #21262d; border-color: #58a6ff; color: #58a6ff; }
+  .btn-cam:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-capture { background: #238636; border: 1px solid #2ea043; color: #fff; border-radius: 8px; padding: 11px 24px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background .15s; display: none; margin: 12px auto 0; width: 100%; }
+  .btn-capture:hover { background: #2ea043; }
+  .btn-stop { background: none; border: 1px solid #30363d; color: #8b949e; border-radius: 6px; padding: 6px 14px; font-size: 0.78rem; cursor: pointer; display: none; margin: 8px auto 0; }
+  .btn-stop:hover { border-color: #8b949e; color: #c9d1d9; }
+  .btn-live { background: #1f6feb; border: 1px solid #388bfd; color: #fff; border-radius: 8px; padding: 10px 18px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: background .15s; display: none; margin: 10px auto 0; width: 100%; }
+  .btn-live:hover { background: #388bfd; }
+  .btn-live.stop { background: #30363d; border-color: #30363d; color: #c9d1d9; }
+  .live-status { display: none; margin: 8px auto 0; font-size: 0.75rem; color: #8b949e; text-align: center; }
+  .live-dot { display: inline-block; width: 6px; height: 6px; background: #3fb950; border-radius: 50%; margin-right: 6px; animation: blink 1.5s infinite; }
+
+  .gps-tag { display: none; margin: 10px auto 0; background: rgba(63,185,80,.1); border: 1px solid rgba(63,185,80,.25); border-radius: 20px; padding: 4px 14px; font-size: 0.72rem; color: #3fb950; font-family: 'Courier New', monospace; }
+
+  /* ── PREVIEW ── */
+  #preview-wrap { display: none; margin-top: 16px; }
+  .img-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  @media(max-width:600px){ .img-grid { grid-template-columns: 1fr; } }
+  .img-box { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #30363d; background: #000; min-height: 140px; display: flex; align-items: center; justify-content: center; }
+  .img-box img { width: 100%; max-height: 320px; object-fit: contain; display: block; }
+  .img-tag { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,.7); color: #fff; font-size: 0.65rem; font-weight: 600; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .06em; }
+  .placeholder-txt { color: #8b949e; font-size: 0.82rem; }
+
+  /* ── RUN BUTTON ── */
+  #run-btn { display: none; width: 100%; margin-top: 16px; background: #238636; color: #fff; border: none; border-radius: 8px; padding: 14px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background .2s; }
+  #run-btn:hover:not(:disabled) { background: #2ea043; }
+  #run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── LOADER ── */
+  #loader { display: none; text-align: center; padding: 30px 0; }
+  .progress { height: 4px; background: #30363d; border-radius: 2px; overflow: hidden; margin: 12px auto; max-width: 200px; }
+  .progress-bar { height: 100%; background: #58a6ff; animation: prog 1.8s ease-in-out infinite; }
+  @keyframes prog { 0%{width:0%;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0%;margin-left:100%} }
+  .loader-msg { color: #8b949e; font-size: 0.82rem; animation: blink 1.2s infinite; }
+
+  /* ── SEVERITY ── */
+  #result-wrap { display: none; margin-top: 20px; }
+  .severity-box { border-radius: 8px; padding: 18px 20px; display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .sev-icon { font-size: 2rem; }
+  .sev-title { font-size: 1.2rem; font-weight: 700; }
+  .sev-sub { font-size: 0.84rem; margin-top: 3px; opacity: 0.85; }
+  .SEV-CRITICAL { background: rgba(248,81,73,.15); border: 1px solid rgba(248,81,73,.4); color: #ff7b72; }
+  .SEV-HIGH     { background: rgba(255,140,0,.15);  border: 1px solid rgba(255,140,0,.4);  color: #ffa657; }
+  .SEV-MODERATE { background: rgba(255,204,0,.12);  border: 1px solid rgba(255,204,0,.35); color: #e3b341; }
+  .SEV-LOW      { background: rgba(63,185,80,.12);  border: 1px solid rgba(63,185,80,.35); color: #3fb950; }
+  .SEV-NO_CRACK { background: rgba(63,185,80,.12);  border: 1px solid rgba(63,185,80,.35); color: #3fb950; }
+
+  .stats-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat { flex: 1; min-width: 90px; background: #1c2128; border: 1px solid #30363d; border-radius: 8px; padding: 12px; text-align: center; }
+  .stat-val { font-size: 1.4rem; font-weight: 700; color: #58a6ff; }
+  .stat-lbl { font-size: 0.72rem; color: #8b949e; margin-top: 3px; text-transform: uppercase; letter-spacing: .04em; }
+
+  .det-table-wrap { margin-bottom: 16px; }
+  .section-title { font-size: 0.78rem; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #1c2128; padding: 8px 12px; font-size: 0.75rem; font-weight: 600; color: #8b949e; text-align: left; border-bottom: 1px solid #30363d; }
+  td { padding: 7px 12px; font-size: 0.8rem; border-bottom: 1px solid #21262d; }
+  tr:last-child td { border-bottom: none; }
+
+  .advisory { background: #1c2128; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+  .adv-title { font-size: 0.78rem; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+  .action-list { list-style: none; }
+  .action-list li { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #21262d; font-size: 0.85rem; line-height: 1.5; color: #c9d1d9; }
+  .action-list li:last-child { border-bottom: none; }
+  .action-num { flex-shrink: 0; width: 20px; height: 20px; background: #58a6ff; border-radius: 50%; font-size: 0.68rem; font-weight: 700; display: flex; align-items: center; justify-content: center; color: #0d1117; margin-top: 1px; }
+  .info-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .info-cell { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 12px; }
+  .info-full { grid-column: 1/-1; }
+  .info-lbl { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; letter-spacing: .04em; }
+  .info-val { font-size: 0.8rem; color: #c9d1d9; margin-top: 3px; }
+
+  /* ── SIDEBAR ── */
+  .sidebar { display: flex; flex-direction: column; gap: 16px; }
+  .model-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #21262d; font-size: 0.82rem; }
+  .model-row:last-child { border-bottom: none; }
+  .model-key { color: #8b949e; }
+  .model-val { font-family: 'Courier New', monospace; font-size: 0.76rem; color: #c9d1d9; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-list { max-height: 380px; overflow-y: auto; }
+  .hist-item { display: flex; gap: 10px; align-items: center; padding: 8px; border-bottom: 1px solid #21262d; border-radius: 6px; cursor: pointer; }
+  .hist-item:hover { background: #1c2128; }
+  .hist-item:last-child { border-bottom: none; }
+  .hist-thumb { width: 48px; height: 38px; object-fit: cover; border-radius: 4px; border: 1px solid #30363d; flex-shrink: 0; }
+  .hist-sev { font-size: 0.82rem; font-weight: 600; }
+  .hist-time { font-size: 0.7rem; color: #8b949e; margin-top: 2px; }
+  .CRITICAL { color: #ff7b72; } .HIGH { color: #ffa657; } .MODERATE { color: #e3b341; }
+  .LOW, .NO_CRACK { color: #3fb950; }
+  .empty { text-align: center; padding: 28px 0; color: #8b949e; font-size: 0.85rem; }
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #161b22; } ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+  .clear-btn { background: none; border: 1px solid #30363d; border-radius: 4px; color: #8b949e; padding: 3px 10px; font-size: 0.72rem; cursor: pointer; margin-left: auto; }
+  .clear-btn:hover { border-color: #8b949e; color: #c9d1d9; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Railway track<span> crack detection</span></h1>
+  <div class="status"><span class="dot"></span>System Online &nbsp;|&nbsp; <span id="model-name">Loading…</span></div>
+</div>
+
+<div class="main">
+  <div>
+
+    <!-- ── INPUT CARD ── -->
+    <div class="card" style="margin-bottom:20px">
+
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('upload', this)"> Upload Image</button>
+        <button class="tab-btn" onclick="switchTab('camera', this)"> Camera</button>
+      </div>
+
+      <!-- UPLOAD TAB -->
+      <div class="tab-pane active" id="tab-upload">
+        <div id="drop-zone">
+          <div class="icon"></div>
+          <h3>Upload Railway Track Image</h3>
+          <p>Drag &amp; drop here, or click to choose a file</p>
+          <div class="formats">
+            <span class="fmt">JPG</span><span class="fmt">PNG</span><span class="fmt">BMP</span><span class="fmt">TIFF</span>
+          </div>
+          <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.bmp,.tif,.tiff"/>
+        </div>
+      </div>
+
+      <!-- CAMERA TAB -->
+      <div class="tab-pane" id="tab-camera">
+        <div class="cam-wrap">
+
+          <!-- HTTPS warning — shown when not on localhost or https -->
+          <div class="https-warn" id="https-warn">
+            <strong> Camera requires HTTPS or localhost</strong>
+            You're accessing from a non-secure URL. Camera will only work on:
+            <br>• <strong>Your laptop:</strong> use <code>http://localhost:5000</code>
+            <br>• <strong>Your phone:</strong> run <code>python ngrok_start.py</code> to get an HTTPS link
+          </div>
+
+          <video id="cam-video" autoplay playsinline muted></video>
+          <canvas id="cam-canvas"></canvas>
+
+          <div class="cam-idle" id="cam-idle">
+            <div class="cam-big"></div>
+            <h3>Use your camera to capture the track</h3>
+            <p>Point at the railway track, then tap Capture Photo</p>
+            <div class="btn-row">
+              <button class="btn-cam" id="btn-rear" onclick="startCam('environment')"> Rear Camera</button>
+              <button class="btn-cam" id="btn-front" onclick="startCam('user')"> Front / Laptop</button>
+            </div>
+          </div>
+
+          <button class="btn-capture" id="btn-capture" onclick="capturePhoto()"> Capture Photo</button>
+          <button class="btn-stop"    id="btn-stop"    onclick="stopCam()"> Stop Camera</button>
+          <button class="btn-live"    id="btn-live"    onclick="toggleLive()">▶ Start Live Detection</button>
+          <div class="live-status" id="live-status"><span class="live-dot"></span>Live detection running…</div>
+          <div class="gps-tag" id="gps-tag"> <span id="gps-txt">locating…</span></div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PREVIEW + RUN ── -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header"> Image Analysis</div>
+      <div class="card-body">
+        <div id="preview-wrap">
+          <div class="img-grid">
+            <div class="img-box"><span class="img-tag">ORIGINAL</span><img id="orig-img" src="" alt=""/></div>
+            <div class="img-box">
+              <span class="img-tag">ANALYSED</span>
+              <img id="ann-img" src="" alt="" style="display:none"/>
+              <span class="placeholder-txt" id="ann-placeholder">awaiting analysis…</span>
+            </div>
+          </div>
+        </div>
+        <div id="no-image-msg" style="text-align:center;padding:24px;color:#8b949e;font-size:.85rem;">
+          Upload an image or use your camera to begin
+        </div>
+        <button id="run-btn"> Run Crack Detection</button>
+        <div id="loader">
+          <div class="progress"><div class="progress-bar"></div></div>
+          <div class="loader-msg" id="loader-msg">Running YOLOv8…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RESULT ── -->
+    <div id="result-wrap">
+      <div class="card">
+        <div class="card-header"> Detection Report</div>
+        <div class="card-body">
+
+          <div id="sev-box" class="severity-box">
+            <span class="sev-icon" id="sev-icon">—</span>
+            <div><div class="sev-title" id="sev-title">—</div><div class="sev-sub" id="sev-sub">—</div></div>
+          </div>
+
+          <div class="stats-row">
+            <div class="stat"><div class="stat-val" id="st-count">0</div><div class="stat-lbl">Detections</div></div>
+            <div class="stat"><div class="stat-val" id="st-conf">—</div><div class="stat-lbl">Max Confidence</div></div>
+            <div class="stat"><div class="stat-val" id="st-area">—</div><div class="stat-lbl">Max Area</div></div>
+            <div class="stat"><div class="stat-val" id="st-time">—</div><div class="stat-lbl">Time</div></div>
+          </div>
+
+          <div id="det-table-wrap" class="det-table-wrap" style="display:none">
+            <div class="section-title">Detected objects</div>
+            <table>
+              <thead><tr><th>#</th><th>Class</th><th>Confidence</th><th>Area %</th></tr></thead>
+              <tbody id="det-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="advisory">
+            <div class="adv-title"> Advisory &amp; Action Plan</div>
+            <ul class="action-list" id="action-list"></ul>
+            <div class="info-row">
+              <div class="info-cell"><div class="info-lbl">Timeline</div><div class="info-val" id="i-timeline">—</div></div>
+              <div class="info-cell"><div class="info-lbl">Authority</div><div class="info-val" id="i-authority">—</div></div>
+              <div class="info-cell info-full"><div class="info-lbl">Risk Summary</div><div class="info-val" id="i-risk">—</div></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /left col -->
+
+  <!-- ── SIDEBAR ── -->
+  <div class="sidebar">
+    <div class="card">
+      <div class="card-header"> Model Status</div>
+      <div class="card-body" style="padding:12px 16px">
+        <div class="model-row"><span class="model-key">Type</span><span class="model-val">YOLOv8</span></div>
+        <div class="model-row"><span class="model-key">Status</span><span class="model-val" style="color:#3fb950">● Active</span></div>
+        <div class="model-row"><span class="model-key">Model file</span><span class="model-val" id="mi-model">—</span></div>
+        <div class="model-row"><span class="model-key">Confidence</span><span class="model-val" id="mi-conf">—</span></div>
+      </div>
+    </div>
+    <div class="card" style="flex:1">
+      <div class="card-header"> History <button class="clear-btn" onclick="clearHistory()">Clear</button></div>
+      <div class="card-body" style="padding:8px 12px">
+        <div class="history-list" id="history-list"><div class="empty">No detections yet</div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ── state ───────────────────────────────────────────────────────
+let selectedFile = null;
+let camStream    = null;
+let currentDetId = null;
+let liveInterval = null;
+let liveBusy     = false;
+let liveOn       = false;
+
+const MSGS = ['Preprocessing image…','Running YOLOv8…','Classifying severity…','Generating report…'];
+
+// ── TABS ────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'camera') checkHTTPS();
+}
+
+function checkHTTPS() {
+  const unsafe = location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+  document.getElementById('https-warn').style.display = unsafe ? 'block' : 'none';
+}
+
+// ── DRAG & DROP ─────────────────────────────────────────────────
+const dz = document.getElementById('drop-zone');
+const fi = document.getElementById('file-input');
+dz.addEventListener('click', () => fi.click());
+fi.addEventListener('change', e => loadFile(e.target.files[0]));
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', ()  => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('over');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+
+function loadFile(file) {
+  if (!file) return;
+  selectedFile = file;
+  setPreview(URL.createObjectURL(file));
+}
+
+function setPreview(url) {
+  document.getElementById('no-image-msg').style.display  = 'none';
+  document.getElementById('preview-wrap').style.display  = 'block';
+  document.getElementById('orig-img').src = url;
+  document.getElementById('ann-img').style.display       = 'none';
+  document.getElementById('ann-placeholder').style.display = 'block';
+  document.getElementById('run-btn').style.display       = 'block';
+  document.getElementById('result-wrap').style.display   = 'none';
+}
+
+// ── CAMERA ──────────────────────────────────────────────────────
+async function startCam(facing) {
+  try {
+    if (camStream) camStream.getTracks().forEach(t => t.stop());
+
+    const constraints = {
+      video: {
+        facingMode: { ideal: facing },
+        width:      { ideal: 1280 },
+        height:     { ideal: 960 },
+      }
+    };
+
+    camStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+    const video = document.getElementById('cam-video');
+    video.srcObject = camStream;
+    video.style.display = 'block';
+
+    document.getElementById('cam-idle').style.display    = 'none';
+    document.getElementById('btn-capture').style.display = 'block';
+    document.getElementById('btn-stop').style.display    = 'block';
+    document.getElementById('btn-live').style.display    = 'block';
+    document.getElementById('live-status').style.display = 'none';
+
+    // Try to get GPS while camera is running
+    getGPS();
+
+    return true;
+
+  } catch (err) {
+    let msg = err.message;
+    if (err.name === 'NotAllowedError')
+      msg = 'Camera permission denied. Please allow camera access in your browser settings.';
+    else if (err.name === 'NotFoundError')
+      msg = 'No camera found on this device.';
+    else if (err.name === 'NotReadableError')
+      msg = 'Camera is in use by another app. Close it and try again.';
+    alert('Camera error: ' + msg);
+    return false;
+  }
+}
+
+function stopCam() {
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  stopLive();
+  document.getElementById('cam-video').style.display    = 'none';
+  document.getElementById('cam-idle').style.display     = 'block';
+  document.getElementById('btn-capture').style.display  = 'none';
+  document.getElementById('btn-stop').style.display     = 'none';
+  document.getElementById('btn-live').style.display     = 'none';
+  document.getElementById('live-status').style.display  = 'none';
+  document.getElementById('gps-tag').style.display      = 'none';
+}
+
+function capturePhoto() {
+  const video  = document.getElementById('cam-video');
+  const canvas = document.getElementById('cam-canvas');
+  canvas.width  = video.videoWidth  || 1280;
+  canvas.height = video.videoHeight || 960;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  canvas.toBlob(blob => {
+    const ts   = new Date().toISOString().replace(/[:.]/g, '-');
+    selectedFile = new File([blob], `track_cam_${ts}.jpg`, { type: 'image/jpeg' });
+    setPreview(URL.createObjectURL(blob));
+    stopCam();
+    // switch to analysis tab view
+    document.querySelectorAll('.tab-btn')[0].click();
+  }, 'image/jpeg', 0.92);
+}
+
+function stopLive() {
+  if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
+  liveOn = false;
+  document.getElementById('btn-live').textContent = '▶ Start Live Detection';
+  document.getElementById('btn-live').classList.remove('stop');
+  document.getElementById('live-status').style.display = 'none';
+}
+
+function toggleLive() {
+  if (liveOn) { stopLive(); return; }
+  if (!camStream) { alert('Start the camera first.'); return; }
+  liveOn = true;
+  document.getElementById('btn-live').textContent = '■ Stop Live Detection';
+  document.getElementById('btn-live').classList.add('stop');
+  document.getElementById('live-status').style.display = 'block';
+
+  // Capture a frame every 1.5s to keep CPU/network reasonable
+  liveInterval = setInterval(() => {
+    if (!liveOn || liveBusy) return;
+    liveBusy = true;
+    captureAndDetectFrame().finally(() => { liveBusy = false; });
+  }, 1500);
+}
+
+async function captureAndDetectFrame() {
+  const video  = document.getElementById('cam-video');
+  if (!video || !video.videoWidth) return;
+
+  const canvas = document.getElementById('cam-canvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+  if (!blob) return;
+
+  const file = new File([blob], `live_${Date.now()}.jpg`, { type: 'image/jpeg' });
+  selectedFile = file;
+  await runDetectionWithFile(file, { silent: true });
+}
+
+function getGPS() {
+  if (!navigator.geolocation) return;
+  const tag = document.getElementById('gps-tag');
+  const txt = document.getElementById('gps-txt');
+  tag.style.display = 'inline-block';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude: lat, longitude: lng, accuracy: acc } = pos.coords;
+      txt.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}  (±${Math.round(acc)}m)`;
+    },
+    () => { txt.textContent = 'GPS unavailable'; }
+  );
+}
+
+// ── DETECTION ────────────────────────────────────────────────────
+document.getElementById('run-btn').addEventListener('click', () => runDetectionWithFile(selectedFile, { silent: false }));
+
+async function runDetectionWithFile(file, opts) {
+  if (!file) return;
+  const silent = !!(opts && opts.silent);
+  const runBtn = document.getElementById('run-btn');
+
+  if (!silent) {
+    runBtn.disabled = true;
+    document.getElementById('loader').style.display      = 'flex';
+    document.getElementById('loader').style.flexDirection = 'column';
+    document.getElementById('loader').style.alignItems   = 'center';
+    document.getElementById('result-wrap').style.display = 'none';
+  }
+
+  let mi = 0;
+  const iv = silent ? null : setInterval(() => { document.getElementById('loader-msg').textContent = MSGS[mi++ % MSGS.length]; }, 900);
+
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res  = await fetch('/api/detect', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (iv) clearInterval(iv);
+    if (!res.ok) throw new Error(data.error || 'Detection failed');
+    currentDetId = data.id;
+    if (!silent) setPreview(URL.createObjectURL(file));
+    renderResult(data);
+    loadHistory();
+  } catch(e) {
+    if (iv) clearInterval(iv);
+    if (!silent) alert('Error: ' + e.message);
+  } finally {
+    if (!silent) {
+      document.getElementById('loader').style.display = 'none';
+      runBtn.disabled = false;
+    }
+  }
+}
+
+// ── RENDER ───────────────────────────────────────────────────────
+function renderResult(d) {
+  document.getElementById('ann-img').src = d.annotated_url + '?t=' + Date.now();
+  document.getElementById('ann-img').style.display       = 'block';
+  document.getElementById('ann-placeholder').style.display = 'none';
+
+  const sev = d.severity, adv = d.advisory, dets = d.detections || [];
+
+  const box = document.getElementById('sev-box');
+  box.className = 'severity-box SEV-' + sev;
+  document.getElementById('sev-icon').textContent  = adv.icon;
+  document.getElementById('sev-title').textContent = sev.replace('_', ' ');
+  document.getElementById('sev-sub').textContent   = adv.risk_summary;
+
+  const mxc = dets.length ? Math.max(...dets.map(x => x.confidence)) : 0;
+  const mxa = dets.length ? Math.max(...dets.map(x => x.area_frac))  : 0;
+  document.getElementById('st-count').textContent = d.detection_count;
+  document.getElementById('st-conf').textContent  = dets.length ? (mxc*100).toFixed(1)+'%' : '—';
+  document.getElementById('st-area').textContent  = dets.length ? (mxa*100).toFixed(2)+'%'  : '—';
+  document.getElementById('st-time').textContent  = new Date(d.timestamp).toLocaleTimeString();
+
+  const tbody = document.getElementById('det-tbody');
+  tbody.innerHTML = '';
+  if (dets.length) {
+    document.getElementById('det-table-wrap').style.display = 'block';
+    dets.forEach((det, i) => {
+      tbody.innerHTML += `<tr><td>${i+1}</td><td>${det.class_name}</td><td>${(det.confidence*100).toFixed(1)}%</td><td>${(det.area_frac*100).toFixed(2)}%</td></tr>`;
+    });
+  } else {
+    document.getElementById('det-table-wrap').style.display = 'none';
+  }
+
+  document.getElementById('action-list').innerHTML =
+    (adv.actions || []).map((a,i) => `<li><span class="action-num">${i+1}</span><span>${a}</span></li>`).join('');
+
+  document.getElementById('i-timeline').textContent  = adv.timeline  || '—';
+  document.getElementById('i-authority').textContent = adv.authority || '—';
+  document.getElementById('i-risk').textContent      = adv.risk_summary || '—';
+
+  document.getElementById('result-wrap').style.display = 'block';
+
+  document.getElementById('result-wrap').scrollIntoView({ behavior: 'smooth' });
+}
+
+
+// ── HISTORY ──────────────────────────────────────────────────────
+async function loadHistory() {
+  const res  = await fetch('/api/history');
+  const data = await res.json();
+  const el   = document.getElementById('history-list');
+  if (!data.length) { el.innerHTML = '<div class="empty">No detections yet</div>'; return; }
+  el.innerHTML = data.slice(0,20).map(h => `
+    <div class="hist-item">
+      <img class="hist-thumb" src="${h.annotated_url}" onerror="this.src='${h.original_url}'"/>
+      <div>
+        <div class="hist-sev ${h.severity}">${h.severity.replace('_',' ')}</div>
+        <div class="hist-time">${new Date(h.timestamp).toLocaleString()}</div>
+      </div>
+    </div>`).join('');
+}
+async function clearHistory() { await fetch('/api/history/clear',{method:'POST'}); loadHistory(); }
+
+async function loadModelInfo() {
+  try {
+    const res  = await fetch('/api/model-info');
+    const data = await res.json();
+    const name = data.model_path.split(/[\\/]/).pop();
+    document.getElementById('mi-model').textContent   = name;
+    document.getElementById('mi-conf').textContent    = (data.conf_threshold*100).toFixed(0)+'%';
+    document.getElementById('model-name').textContent = 'YOLOv8 · ' + name;
+  } catch(e) {}
+}
+
+loadModelInfo();
+loadHistory();
+</script>
+</body>
+</html>
