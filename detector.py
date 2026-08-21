@@ -416,10 +416,16 @@ class CrackDetector:
         if path and Path(path).exists():
             return Path(path)
         candidates = [
+            # models/best_crack_detector.pt is the canonical output of
+            # scripts/train_model.py — check it first so a fresh retrain is
+            # always picked up. The runs/detect/train* paths are fallbacks
+            # for ad-hoc/manual runs that never got copied there; they used
+            # to be checked FIRST, which meant a stale leftover best.pt in
+            # runs/detect/train silently shadowed every newer retrain.
+            BASE_DIR / "models" / "best_crack_detector.pt",
             BASE_DIR / "runs" / "detect" / "train"  / "weights" / "best.pt",
             BASE_DIR / "runs" / "detect" / "train2" / "weights" / "best.pt",
             BASE_DIR / "runs" / "detect" / "train3" / "weights" / "best.pt",
-            BASE_DIR / "models" / "best_crack_detector.pt",
         ]
         for c in candidates:
             if c.exists():
