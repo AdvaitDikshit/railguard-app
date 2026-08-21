@@ -152,31 +152,33 @@ export default function VideoPage() {
                 <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-ink-soft">
                   Detections, in order of first appearance
                 </p>
-                <table className="w-full border-collapse text-[12px]">
-                  <thead>
-                    <tr className="border-b border-rule text-left text-ink-soft">
-                      <th className="pb-1 font-mono font-normal">#</th>
-                      <th className="pb-1 font-mono font-normal">First detected</th>
-                      <th className="pb-1 font-mono font-normal">Confidence</th>
-                      <th className="pb-1 font-mono font-normal">Size</th>
-                      <th className="pb-1 font-mono font-normal">Frames seen</th>
-                    </tr>
-                  </thead>
-                  <tbody className="font-mono">
-                    {report.detections
-                      .slice()
-                      .sort((a, b) => a.first_seen_s - b.first_seen_s)
-                      .map((d, i) => (
-                        <tr key={d.track_id} className="border-b border-rule/60">
-                          <td className="py-1.5 text-ink-soft">{i + 1}</td>
-                          <td className="py-1.5 text-ink">{formatTimestamp(d.first_seen_s)}</td>
-                          <td className="py-1.5 text-ink">{(d.confidence * 100).toFixed(0)}%</td>
-                          <td className="py-1.5 text-ink">{d.size_cat}</td>
-                          <td className="py-1.5 text-ink">{d.frame_count}</td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[420px] border-collapse text-[12px]">
+                    <thead>
+                      <tr className="border-b border-rule text-left text-ink-soft">
+                        <th className="pb-1 font-mono font-normal">#</th>
+                        <th className="pb-1 font-mono font-normal">First detected</th>
+                        <th className="pb-1 font-mono font-normal">Confidence</th>
+                        <th className="pb-1 font-mono font-normal">Size</th>
+                        <th className="pb-1 font-mono font-normal">Frames seen</th>
+                      </tr>
+                    </thead>
+                    <tbody className="font-mono">
+                      {report.detections
+                        .slice()
+                        .sort((a, b) => a.first_seen_s - b.first_seen_s)
+                        .map((d, i) => (
+                          <tr key={d.track_id} className="border-b border-rule/60">
+                            <td className="py-1.5 text-ink-soft">{i + 1}</td>
+                            <td className="py-1.5 text-ink">{formatTimestamp(d.first_seen_s)}</td>
+                            <td className="py-1.5 text-ink">{(d.confidence * 100).toFixed(0)}%</td>
+                            <td className="py-1.5 text-ink">{d.size_cat}</td>
+                            <td className="py-1.5 text-ink">{d.frame_count}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
