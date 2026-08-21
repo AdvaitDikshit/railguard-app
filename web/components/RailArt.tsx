@@ -30,6 +30,18 @@ export function RailArt({ className = "" }: { className?: string }) {
       <line x1={56} y1={16} x2={56} y2={24} strokeWidth={2} className="stroke-ink-soft" />
       <line x1={20} y1={22} x2={20} y2={88} strokeWidth={3} className="stroke-ink-soft" />
       <line x1={46} y1={22} x2={46} y2={88} strokeWidth={3} className="stroke-ink-soft" />
+      {/* Small caps label under the roofline, Swiss-signage style, so the
+          glyph reads unambiguously as "station" rather than a generic
+          shelter shape. */}
+      <text
+        x={33}
+        y={12}
+        textAnchor="middle"
+        className="font-mono fill-ink-soft"
+        style={{ fontSize: 9, letterSpacing: 1, fontWeight: 600 }}
+      >
+        STATION
+      </text>
 
       {sleeperXs.map((x) => (
         <line key={x} x1={x} y1={24} x2={x} y2={76} strokeWidth={2} className="stroke-rule" opacity={0.7} />
