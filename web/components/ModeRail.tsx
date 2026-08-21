@@ -5,9 +5,11 @@ export type InputMode = "upload" | "camera";
 export function ModeRail({
   mode,
   onChange,
+  disabled,
 }: {
   mode: InputMode;
   onChange: (m: InputMode) => void;
+  disabled?: boolean;
 }) {
   const items: { key: InputMode; label: string }[] = [
     { key: "upload", label: "Upload" },
@@ -22,8 +24,9 @@ export function ModeRail({
           <button
             key={item.key}
             onClick={() => onChange(item.key)}
+            disabled={disabled}
             className={[
-              "rounded px-3 py-2 text-left text-[12px] font-medium tracking-wide",
+              "rounded px-3 py-2 text-left text-[12px] font-medium tracking-wide disabled:cursor-not-allowed disabled:opacity-40",
               active
                 ? "bg-ink text-page"
                 : "text-ink-soft hover:bg-panel hover:text-ink",

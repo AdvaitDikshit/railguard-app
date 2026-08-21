@@ -19,14 +19,16 @@ export default function InspectPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
+  const [gpsStatus, setGpsStatus] = useState<"idle" | "pending" | "granted" | "unavailable">("idle");
 
   const handleModeChange = useCallback((m: InputMode) => {
+    if (loading) return; // guard against a race with an in-flight submission
     setMode(m);
     setFile(null);
     setPreviewUrl(null);
     setReport(null);
     setError(null);
-  }, []);
+  }, [loading]);
 
   const handleFileSelected = useCallback((f: File) => {
     setFile(f);
@@ -35,16 +37,24 @@ export default function InspectPage() {
     setError(null);
 
     if (navigator.geolocation) {
+      setGpsStatus("pending");
       navigator.geolocation.getCurrentPosition(
-        (pos) =>
+        (pos) => {
           setGps({
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
             accuracy: pos.coords.accuracy,
-          }),
-        () => setGps(null),
+          });
+          setGpsStatus("granted");
+        },
+        () => {
+          setGps(null);
+          setGpsStatus("unavailable");
+        },
         { timeout: 8000 }
       );
+    } else {
+      setGpsStatus("unavailable");
     }
   }, []);
 
@@ -74,6 +84,7 @@ export default function InspectPage() {
     setReport(null);
     setError(null);
     setGps(null);
+    setGpsStatus("idle");
   }, []);
 
   return (
@@ -81,7 +92,7 @@ export default function InspectPage() {
       <TopBar />
 
       <div className="flex flex-1 flex-col lg:flex-row">
-        <ModeRail mode={mode} onChange={handleModeChange} />
+        <ModeRail mode={mode} onChange={handleModeChange} disabled={loading} />
 
         <main className="flex flex-1 flex-col">
           <div className="flex flex-1 flex-col lg:flex-row">
@@ -90,6 +101,7 @@ export default function InspectPage() {
                 mode={mode}
                 previewUrl={previewUrl}
                 onFileSelected={handleFileSelected}
+                onRetake={reset}
                 detections={report?.detections ?? null}
                 severity={report?.severity?.ai_severity ?? null}
                 disabled={loading}
@@ -120,11 +132,11 @@ export default function InspectPage() {
               >
                 Clear
               </button>
-              {gps && (
-                <span className="ml-auto font-mono text-[11px] text-ink-soft">
-                  GPS {gps.lat.toFixed(4)}, {gps.lng.toFixed(4)}
-                </span>
-              )}
+              <span className="ml-auto font-mono text-[11px] text-ink-soft">
+                {gpsStatus === "pending" && "Getting location…"}
+                {gpsStatus === "granted" && gps && `GPS ${gps.lat.toFixed(4)}, ${gps.lng.toFixed(4)}`}
+                {gpsStatus === "unavailable" && "Location unavailable — report will have no GPS tag"}
+              </span>
             </div>
           )}
           {report && (

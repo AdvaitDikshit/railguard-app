@@ -19,6 +19,14 @@
   }
 }
 
+/* Inference-in-progress indicator on the inspection canvas (see
+   InspectionCanvas.tsx) — a thin bar sweeping left-to-right. */
+@keyframes scan {
+  0% { margin-left: 0%; }
+  50% { margin-left: 66.6667%; }
+  100% { margin-left: 0%; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

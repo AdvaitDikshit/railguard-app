@@ -9,6 +9,7 @@ export function InspectionCanvas({
   mode,
   previewUrl,
   onFileSelected,
+  onRetake,
   detections,
   severity,
   disabled,
@@ -16,6 +17,7 @@ export function InspectionCanvas({
   mode: InputMode;
   previewUrl: string | null;
   onFileSelected: (file: File) => void;
+  onRetake?: () => void;
   detections: Detection[] | null;
   severity: string | null;
   disabled?: boolean;
@@ -78,9 +80,23 @@ export function InspectionCanvas({
 
   // ── preview + overlay (shared by upload result and camera capture) ──
   if (previewUrl) {
+    const canRetake = mode === "camera" && !severity && !disabled;
     return (
       <div className="relative flex w-full items-center justify-center bg-canvas p-3">
+        {disabled && (
+          <div className="absolute inset-x-0 top-0 z-10 h-0.5 overflow-hidden bg-canvas-border">
+            <div className="h-full w-1/3 animate-[scan_1.4s_ease-in-out_infinite] bg-accent" />
+          </div>
+        )}
         <OverlayImage src={previewUrl} detections={detections} severity={severity} />
+        {canRetake && (
+          <button
+            onClick={onRetake}
+            className="absolute right-4 top-4 rounded border border-canvas-border bg-canvas/90 px-3 py-1.5 text-[11px] font-medium tracking-wide text-page hover:border-accent hover:text-accent"
+          >
+            RETAKE
+          </button>
+        )}
       </div>
     );
   }
