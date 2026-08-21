@@ -30,13 +30,16 @@
 /* TrackScanHero (idle-state hero, see components/TrackScanHero.tsx) —
    a slow rehearsal of the real upload -> scan -> detect pipeline.
    Both animations share the same 9s duration so they stay phase-locked:
-   the marker appears right as the scan-line finishes passing it. */
+   the marker appears right as the scan-line finishes passing it.
+   --target-x is set via inline style (TrackScanHero.tsx), re-rolled to
+   a new random position on each animationiteration — so the crack
+   doesn't show up in the exact same spot every single loop. */
 @keyframes track-scan-sweep {
   0%   { left: 0%;  opacity: 0; }
   4%   { opacity: 1; }
-  60%  { left: 70%; opacity: 1; }
+  60%  { left: var(--target-x, 70%); opacity: 1; }
   64%  { opacity: 0; }
-  100% { left: 70%; opacity: 0; }
+  100% { left: var(--target-x, 70%); opacity: 0; }
 }
 @keyframes track-scan-detect {
   0%, 58% { opacity: 0; transform: translateX(-50%) scale(0.6); }
