@@ -58,12 +58,16 @@ class Media(Base):
 
     id = Column(String(32), primary_key=True, default=new_id)
     report_id = Column(String(32), ForeignKey("reports.id"), nullable=False)
-    role = Column(String(20), nullable=False)  # original | annotated
+    role = Column(String(20), nullable=False)  # original | annotated | video
     storage_path = Column(String(500), nullable=False)
     content_type = Column(String(50), nullable=True)
     width = Column(Integer, nullable=True)
     height = Column(Integer, nullable=True)
     phash = Column(String(16), nullable=True)  # 64-bit average hash, hex-encoded — see ../dedup.py
+    # video (role="video") only:
+    duration_s = Column(Float, nullable=True)
+    fps = Column(Float, nullable=True)
+    frames_analyzed = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     report = relationship("Report", back_populates="media")
@@ -85,6 +89,12 @@ class Detection(Base):
     area_px = Column(Integer, nullable=False)
     area_frac = Column(Float, nullable=False)
     size_cat = Column(String(20), nullable=False)  # hairline | small | medium | large
+
+    # Video-report only (see routers/videos.py) — the tracked defect's
+    # id from ByteTrack and the timestamp (seconds into the video) it
+    # was first seen. NULL for image reports.
+    track_id = Column(Integer, nullable=True)
+    frame_ts = Column(Float, nullable=True)
 
     report = relationship("Report", back_populates="detections")
 

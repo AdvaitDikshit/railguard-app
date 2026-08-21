@@ -33,11 +33,16 @@ class Settings(BaseSettings):
     # ── Uploads ─────────────────────────────────────────────────
     max_upload_mb: int = 15
     allowed_extensions: str = ".jpg,.jpeg,.png,.bmp,.tif,.tiff,.webp"
+    max_video_mb: int = 100
+    max_video_frames: int = 450  # ~15s at 30fps — hard runtime cap, see detector.py
 
     # ── Rate limiting (slowapi / limits syntax) ────────────────
     rate_limit_detect: str = "10/minute"
     rate_limit_report: str = "6/minute"
     rate_limit_pdf: str = "20/minute"
+    # Video processing is much heavier per-request than an image (runs
+    # synchronously — see routers/videos.py for why) — a tighter limit.
+    rate_limit_video: str = "3/minute"
 
     # ── Detection ───────────────────────────────────────────────
     conf_threshold: float = 0.55

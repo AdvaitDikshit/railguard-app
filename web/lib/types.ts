@@ -57,3 +57,26 @@ export interface ReportSummary {
   lat: number | null;
   lng: number | null;
 }
+
+export interface VideoDetection {
+  track_id: number;
+  class_name: string;
+  confidence: number;
+  bbox: [number, number, number, number];
+  size_cat: string;
+  first_seen_s: number;
+  frame_count: number;
+}
+
+export interface VideoReport {
+  id: string;
+  status: string;
+  created_at: string;
+  video_url: string | null;
+  duration_s: number | null;
+  fps: number | null;
+  frames_analyzed: number | null;
+  location: Location | null;
+  severity: Severity | null;
+  detections: VideoDetection[];
+}

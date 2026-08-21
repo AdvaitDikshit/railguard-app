@@ -16,8 +16,10 @@ static/results/
 static/history.json
 api/storage/uploads/*
 api/storage/tmp/*
+api/storage/videos/*
 !api/storage/uploads/.gitkeep
 !api/storage/tmp/.gitkeep
+!api/storage/videos/.gitkeep
 
 # ── Python ──────────────────────────────────────────────────────
 __pycache__/

@@ -26,6 +26,10 @@ Requires the API running at the URL in `.env.local` (defaults to
   treatment as a live result (via the shared `OverlayImage` component)
 - `app/map/page.tsx` — Leaflet/OpenStreetMap view of every report with a
   recorded location, marker color keyed to severity
+- `app/video/page.tsx` — upload a track video, see the tracked/aggregated
+  defects with first-seen timestamps (Duration / Frames analyzed /
+  Potential defects / High-severity, matching the original brief's
+  output format)
 - `app/how-it-works/page.tsx` — plain-language flow + explicit disclaimer
 - `components/InspectionCanvas.tsx` — drop zone, camera capture, and the
   image + bounding-box overlay

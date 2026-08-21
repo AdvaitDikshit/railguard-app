@@ -1,6 +1,9 @@
 ultralytics>=8.0.0
 torch>=2.0.0
 torchvision>=0.15.0
+lap>=0.5.12  # linear assignment for ByteTrack (detector.py :: CrackDetector.detect_video) —
+             # ultralytics auto-installs this on first use if missing, but pinning it
+             # explicitly avoids a silent mid-request pip install on a fresh environment
 roboflow>=1.1.0
 opencv-python>=4.8.0
 Pillow>=10.0.0

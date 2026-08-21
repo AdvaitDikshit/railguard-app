@@ -517,6 +517,127 @@ class CrackDetector:
             "conf_threshold":  self.conf_threshold,
         }
 
+    def detect_video(self, video_path: str, max_frames: int = 450, device: Optional[str] = None) -> dict:
+        """
+        Runs tracked detection across a video (YOLO + ByteTrack, via
+        ultralytics' built-in .track()) and aggregates per-track-ID
+        sightings into unique physical defects — a crack visible across
+        80 consecutive frames is reported once, with the frame it was
+        first seen, not 80 separate detections. This is what "avoid
+        counting the same crack hundreds of times" (the original
+        project brief's own phrasing) actually means in practice.
+
+        `max_frames` is a hard runtime cap (not a sampling stride —
+        tracking needs consecutive frames to maintain identity, so
+        skipping frames for speed isn't compatible with it). At 450
+        frames / ~30fps that's about 15 seconds of source video; a
+        longer clip is simply truncated, not sped through.
+        """
+        cap = cv2.VideoCapture(str(video_path))
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        duration_s = total_frames / fps if fps > 0 else 0.0
+        cap.release()
+
+        tracks: dict = {}
+        frames_processed = 0
+
+        results_gen = self.model.track(
+            source=str(video_path),
+            conf=self.conf_threshold,
+            iou=NMS_IOU,
+            tracker="bytetrack.yaml",
+            persist=True,
+            stream=True,
+            verbose=False,
+            device=device,  # None = auto (GPU if available); override e.g. "cpu"
+        )
+
+        for frame_idx, result in enumerate(results_gen):
+            frames_processed += 1
+            if frames_processed > max_frames:
+                break
+            ts = frame_idx / fps if fps > 0 else 0.0
+
+            if result.boxes is None or result.boxes.id is None:
+                continue
+
+            h, w = result.orig_shape
+            boxes = result.boxes.xyxy.cpu().numpy()
+            confs = result.boxes.conf.cpu().numpy()
+            ids = result.boxes.id.cpu().numpy().astype(int)
+
+            for box, conf, raw_tid in zip(boxes, confs, ids):
+                tid = int(raw_tid)
+                x1, y1, x2, y2 = map(int, box)
+                bw, bh = max(0, x2 - x1), max(0, y2 - y1)
+                area_px = bw * bh
+                area_frac = area_px / (w * h) if w * h > 0 else 0.0
+                size_cat = categorise_size(area_frac)
+
+                if tid not in tracks:
+                    tracks[tid] = {
+                        "track_id": tid,
+                        "class_name": "possible defect",
+                        "confidence": float(conf),
+                        "bbox": [x1, y1, x2, y2],
+                        "width_px": bw, "height_px": bh,
+                        "area_px": area_px, "area_frac": area_frac,
+                        "size_cat": size_cat,
+                        "first_seen_s": ts,
+                        "frame_count": 1,
+                    }
+                else:
+                    t = tracks[tid]
+                    t["frame_count"] += 1
+                    if ts < t["first_seen_s"]:
+                        t["first_seen_s"] = ts
+                    if conf > t["confidence"]:
+                        # Keep the highest-confidence sighting as the
+                        # representative box/size for this track.
+                        t.update({
+                            "confidence": float(conf), "bbox": [x1, y1, x2, y2],
+                            "width_px": bw, "height_px": bh,
+                            "area_px": area_px, "area_frac": area_frac,
+                            "size_cat": size_cat,
+                        })
+
+        unique_defects = sorted(tracks.values(), key=lambda t: t["first_seen_s"])
+        severity = classify_severity(unique_defects)
+
+        if unique_defects:
+            biggest = max(unique_defects, key=lambda d: d["area_px"])
+            profile = {
+                "count":         len(unique_defects),
+                "size_cat":      biggest["size_cat"],
+                "max_conf":      max(d["confidence"] for d in unique_defects),
+                "max_area_pct":  biggest["area_frac"] * 100,
+                "max_width_px":  biggest["width_px"],
+                "max_height_px": biggest["height_px"],
+            }
+        else:
+            profile = {"count": 0, "size_cat": "none", "max_conf": 0,
+                       "max_area_pct": 0, "max_width_px": 0, "max_height_px": 0}
+
+        advisory = build_advisory(severity, profile)
+
+        return {
+            "id":                  uuid.uuid4().hex[:12],
+            "timestamp":           datetime.now().isoformat(),
+            "video_path":          str(video_path),
+            "duration_s":          duration_s,
+            "fps":                 fps,
+            "frames_analyzed":     frames_processed,
+            "truncated":           total_frames > frames_processed,
+            "unique_defect_count": len(unique_defects),
+            "severity":            severity,
+            "detections":          unique_defects,
+            "advisory":            advisory,
+            "crack_profile":       profile,
+            "model_used":          str(self.model_path),
+            "conf_threshold":      self.conf_threshold,
+        }
+
     def _draw(self, img, detections, severity, advisory, profile) -> np.ndarray:
         h, w   = img.shape[:2]
         color  = SEV_COLORS.get(severity, (50, 200, 50))

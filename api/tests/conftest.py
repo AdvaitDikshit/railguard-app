@@ -41,6 +41,7 @@ os.environ.setdefault("ADMIN_TOKEN", "test-admin-token")
 os.environ.setdefault("RATE_LIMIT_DETECT", "1000/minute")
 os.environ.setdefault("RATE_LIMIT_REPORT", "1000/minute")
 os.environ.setdefault("RATE_LIMIT_PDF", "1000/minute")
+os.environ.setdefault("RATE_LIMIT_VIDEO", "1000/minute")
 
 sys.path.insert(0, str(API_DIR))
 
@@ -90,6 +91,45 @@ def _install_stub_detector():
                 "conf_threshold": self.conf_threshold,
             }
 
+        def detect_video(self, video_path, max_frames=450):
+            return {
+                "id": "pytestvideoid01",
+                "timestamp": "2026-01-01T00:00:00",
+                "video_path": str(video_path),
+                "duration_s": 12.5,
+                "fps": 30.0,
+                "frames_analyzed": 375,
+                "truncated": False,
+                "unique_defect_count": 2,
+                "severity": "HIGH",
+                "detections": [
+                    {
+                        "track_id": 1, "class_name": "possible defect", "confidence": 0.77,
+                        "bbox": [20, 20, 120, 60], "width_px": 100, "height_px": 40,
+                        "area_px": 4000, "area_frac": 0.04, "size_cat": "small",
+                        "first_seen_s": 2.1, "frame_count": 40,
+                    },
+                    {
+                        "track_id": 2, "class_name": "possible defect", "confidence": 0.91,
+                        "bbox": [50, 50, 200, 150], "width_px": 150, "height_px": 100,
+                        "area_px": 15000, "area_frac": 0.15, "size_cat": "medium",
+                        "first_seen_s": 8.4, "frame_count": 60,
+                    },
+                ],
+                "advisory": {
+                    "icon": "", "color": "#e67e22",
+                    "heading": "HIGH — test video advisory heading",
+                    "risk_summary": "Test video risk summary.",
+                    "actions": ["Test video action one."],
+                    "timeline": "Test video timeline.",
+                    "authority": "Test video authority.",
+                },
+                "crack_profile": {"count": 2, "size_cat": "medium", "max_conf": 0.91,
+                                   "max_area_pct": 15.0, "max_width_px": 150, "max_height_px": 100},
+                "model_used": "yolov8n.pt (test stub)",
+                "conf_threshold": self.conf_threshold,
+            }
+
     fake_module.CrackDetector = FakeCrackDetector
     sys.modules["detector"] = fake_module
 
@@ -120,3 +160,24 @@ def sample_image_bytes():
     Image.new("RGB", (200, 150), color=(80, 80, 80)).save(buf, format="JPEG")
     buf.seek(0)
     return buf.read()
+
+
+@pytest.fixture()
+def sample_video_bytes(tmp_path):
+    """
+    A real, tiny, genuinely-decodable video — validate_video_file() uses
+    real cv2 (not stubbed, unlike the detector), so this has to actually
+    open and report frames, even though detect_video() itself is
+    stubbed and never looks at the real content.
+    """
+    import cv2
+    import numpy as np
+
+    path = tmp_path / "sample.mp4"
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    writer = cv2.VideoWriter(str(path), fourcc, 10.0, (64, 48))
+    for i in range(5):
+        frame = np.full((48, 64, 3), i * 40, dtype=np.uint8)
+        writer.write(frame)
+    writer.release()
+    return path.read_bytes()

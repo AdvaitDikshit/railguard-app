@@ -22,7 +22,7 @@ from slowapi.errors import RateLimitExceeded
 from .config import PROJECT_ROOT, settings
 from .database import Base, engine
 from .ratelimit import limiter
-from .routers import detect, reports
+from .routers import detect, reports, videos
 
 
 @asynccontextmanager
@@ -49,12 +49,15 @@ app.add_middleware(
 
 app.include_router(detect.router)
 app.include_router(reports.router)
+app.include_router(videos.router)
 
-# Serve stored evidence images. Uploads live under api/storage/uploads;
-# annotated frames are written by detector.py into the original
-# project's static/results directory and served from there unchanged.
+# Serve stored evidence images/video. Uploads live under
+# api/storage/uploads; annotated frames are written by detector.py into
+# the original project's static/results directory and served from
+# there unchanged; videos live under api/storage/videos.
 app.mount("/media/uploads", StaticFiles(directory=str(PROJECT_ROOT / "api" / "storage" / "uploads")), name="uploads")
 app.mount("/media/results", StaticFiles(directory=str(PROJECT_ROOT / "static" / "results")), name="results")
+app.mount("/media/videos", StaticFiles(directory=str(PROJECT_ROOT / "api" / "storage" / "videos")), name="videos")
 
 
 @app.get("/health")

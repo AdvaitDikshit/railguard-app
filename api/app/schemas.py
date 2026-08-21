@@ -95,3 +95,43 @@ class ReportSummaryOut(BaseModel):
     lng: Optional[float] = None
 
     model_config = {"from_attributes": True}
+
+
+# ── Video ───────────────────────────────────────────────────────
+
+class VideoDetectionOut(BaseModel):
+    track_id: int
+    class_name: str
+    confidence: float
+    bbox: List[int]
+    size_cat: str
+    first_seen_s: float
+    frame_count: int
+
+    model_config = {"from_attributes": True}
+
+
+class VideoReportOut(BaseModel):
+    id: str
+    status: str
+    created_at: datetime
+    video_url: Optional[str] = None
+    duration_s: Optional[float] = None
+    fps: Optional[float] = None
+    frames_analyzed: Optional[int] = None
+    location: Optional[LocationOut] = None
+    severity: Optional[SeverityOut] = None
+    detections: List[VideoDetectionOut] = []
+
+    model_config = {"from_attributes": True}
+
+
+class VideoSummaryOut(BaseModel):
+    id: str
+    status: str
+    created_at: datetime
+    ai_severity: Optional[str] = None
+    duration_s: Optional[float] = None
+    unique_defect_count: Optional[int] = None
+
+    model_config = {"from_attributes": True}

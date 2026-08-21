@@ -1,4 +1,4 @@
-import type { Report, ReportSummary } from "./types";
+import type { Report, ReportSummary, VideoReport } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -44,6 +44,25 @@ export async function listReports(limit = 50): Promise<ReportSummary[]> {
 
 export async function getReport(id: string): Promise<Report> {
   const res = await fetch(`${API_URL}/api/reports/${id}`, { cache: "no-store" });
+  if (!res.ok) throw new ApiError(await parseErrorBody(res));
+  return res.json();
+}
+
+export interface SubmitVideoOptions {
+  file: File;
+  lat?: number;
+  lng?: number;
+  accuracyM?: number;
+}
+
+export async function submitVideo(opts: SubmitVideoOptions): Promise<VideoReport> {
+  const fd = new FormData();
+  fd.append("file", opts.file);
+  if (opts.lat !== undefined) fd.append("lat", String(opts.lat));
+  if (opts.lng !== undefined) fd.append("lng", String(opts.lng));
+  if (opts.accuracyM !== undefined) fd.append("accuracy_m", String(opts.accuracyM));
+
+  const res = await fetch(`${API_URL}/api/videos`, { method: "POST", body: fd });
   if (!res.ok) throw new ApiError(await parseErrorBody(res));
   return res.json();
 }

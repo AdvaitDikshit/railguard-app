@@ -74,7 +74,13 @@ testing only — production should run on Postgres as specified.
 | GET    | `/api/reports/{id}/cluster` | All reports believed to be the same physical defect as this one (see Duplicate detection below) |
 | POST   | `/api/reports/{id}/verify`  | Record a human engineering assessment — requires `X-Admin-Token` header (see below) |
 | GET    | `/api/reports/{id}/pdf`     | Generate and download the evidence PDF                           |
+| POST   | `/api/videos`               | Video pipeline: validate → tracked detection → temporal aggregation → persist (see Video below) |
+| GET    | `/api/videos`               | List video reports                                                |
+| GET    | `/api/videos/{id}`          | Fetch one video report, including per-track detections            |
 | GET    | `/health`                   | Liveness check                                                   |
+
+Note: `POST /api/reports/{id}/verify` also works for video report ids —
+it's generic over any report regardless of source.
 
 ## Example: submit a report with GPS
 
@@ -102,6 +108,33 @@ every report in that cluster from either member's id.
 This is a simple, explainable heuristic — not a learned embedding
 model — which is the right tradeoff at this project's scale: it's easy
 to reason about why two reports were (or weren't) linked.
+
+## Video
+
+`POST /api/videos` runs `detector.py`'s `CrackDetector.detect_video()`
+— YOLO + ByteTrack (via ultralytics' built-in `.track()`) across every
+frame, aggregated by track id so a crack visible across 80 consecutive
+frames is reported once, with the timestamp it was first seen, not 80
+separate detections.
+
+```bash
+curl -X POST http://localhost:8000/api/videos \
+  -F "file=@clip.mp4" -F "lat=18.5679" -F "lng=73.9143"
+```
+
+**Runs synchronously, inside the request.** A real production
+deployment should queue this (Redis/RQ or similar) rather than block a
+request thread for the duration of processing — this project doesn't
+have that infrastructure yet, so it's a documented simplification, not
+an oversight. `MAX_VIDEO_FRAMES` (config.py, default 450 ≈ 15s at
+30fps) is the safety valve that bounds how long any single request can
+take without a queue in front of it — longer clips are truncated, not
+slowly processed in full.
+
+**Not yet built:** duplicate-clustering for video reports (`dedup.py`
+was designed around single-image perceptual hashing, not video) and
+PDF export for video reports (`pdf_service.py` expects a single
+before/after image pair, not a multi-timestamp video summary).
 
 ## Verifying a report (admin)
 

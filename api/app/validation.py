@@ -77,6 +77,53 @@ def validate_image_bytes(raw: bytes, filename: str) -> str:
     return fmt
 
 
+ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".webm", ".mkv"}
+
+
+def validate_video_extension_and_size(raw: bytes, filename: str, max_mb: int) -> None:
+    """
+    Cheap, in-memory checks before anything touches disk. Video content
+    validation (does it actually decode, does it have frames) needs a
+    real file on disk for OpenCV, so that check happens separately in
+    validate_video_file() after the upload is saved — see routers/videos.py.
+    """
+    if not raw:
+        raise ValidationError("Uploaded file is empty.")
+    max_bytes = max_mb * 1024 * 1024
+    if len(raw) > max_bytes:
+        raise ValidationError(f"File exceeds the {max_mb}MB upload limit.")
+    ext = Path(filename).suffix.lower()
+    if ext not in ALLOWED_VIDEO_EXTENSIONS:
+        raise ValidationError(
+            f"File extension '{ext}' is not an accepted video type "
+            f"({', '.join(sorted(ALLOWED_VIDEO_EXTENSIONS))})."
+        )
+
+
+def validate_video_file(path) -> tuple:
+    """
+    Content-based check for a video already saved to disk: does it
+    actually decode, does it have at least one frame. Returns
+    (fps, frame_count) on success. Import cv2 lazily — this module is
+    also imported by the lightweight /api/detect path, and cv2 is only
+    needed here.
+    """
+    import cv2
+
+    cap = cv2.VideoCapture(str(path))
+    try:
+        if not cap.isOpened():
+            raise ValidationError("File could not be opened as a video.")
+        fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        ok, _ = cap.read()
+        if not ok or frame_count <= 0:
+            raise ValidationError("Video file has no readable frames.")
+        return fps or 30.0, frame_count
+    finally:
+        cap.release()
+
+
 def sanitize_image_bytes(raw: bytes, fmt: str) -> bytes:
     """
     Re-encodes the image through PIL before it's ever written to disk —
