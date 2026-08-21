@@ -1,5 +1,6 @@
 import type { Severity } from "@/lib/types";
 import { SEVERITY_COLOR, severityLabel } from "@/lib/severity";
+import { RailDivider } from "./RailDivider";
 
 export function AdvisoryStrip({ severity }: { severity: Severity }) {
   if (!severity.ai_heading) return null;
@@ -7,7 +8,8 @@ export function AdvisoryStrip({ severity }: { severity: Severity }) {
 
   return (
     <div className="border-t border-rule bg-panel px-6 py-5">
-      <div className="mx-auto max-w-4xl">
+      <RailDivider />
+      <div className="mx-auto mt-4 max-w-4xl">
         <p className={`border-l-2 pl-3 text-[15px] font-semibold ${colorClass}`}>
           {severity.ai_heading}
         </p>

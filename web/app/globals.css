@@ -27,6 +27,30 @@
   100% { margin-left: 0%; }
 }
 
+/* TrackScanHero (idle-state hero, see components/TrackScanHero.tsx) —
+   a slow rehearsal of the real upload -> scan -> detect pipeline.
+   Both animations share the same 9s duration so they stay phase-locked:
+   the marker appears right as the scan-line finishes passing it. */
+@keyframes track-scan-sweep {
+  0%   { left: 0%;  opacity: 0; }
+  4%   { opacity: 1; }
+  60%  { left: 70%; opacity: 1; }
+  64%  { opacity: 0; }
+  100% { left: 70%; opacity: 0; }
+}
+@keyframes track-scan-detect {
+  0%, 58% { opacity: 0; transform: translateX(-50%) scale(0.6); }
+  63%     { opacity: 1; transform: translateX(-50%) scale(1); }
+  90%     { opacity: 1; transform: translateX(-50%) scale(1); }
+  97%, 100% { opacity: 0; transform: translateX(-50%) scale(0.6); }
+}
+.track-scan-line {
+  animation: track-scan-sweep 9s ease-in-out infinite;
+}
+.track-scan-marker {
+  animation: track-scan-detect 9s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

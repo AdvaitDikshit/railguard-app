@@ -8,6 +8,7 @@ import { InspectionCanvas } from "@/components/InspectionCanvas";
 import { ResultPanel } from "@/components/ResultPanel";
 import { AdvisoryStrip } from "@/components/AdvisoryStrip";
 import { HomeIntro } from "@/components/HomeIntro";
+import { TrackScanHero } from "@/components/TrackScanHero";
 import { submitReport, ApiError } from "@/lib/api";
 import type { Report } from "@/lib/types";
 
@@ -90,6 +91,7 @@ export default function InspectPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <TopBar />
+      {!file && !report && <TrackScanHero />}
 
       <div className="flex flex-1 flex-col lg:flex-row">
         <ModeRail mode={mode} onChange={handleModeChange} disabled={loading} />
