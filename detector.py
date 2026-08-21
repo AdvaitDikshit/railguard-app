@@ -89,7 +89,19 @@ _REAL_CLASS_NAMES = {
 }
 
 def normalize_class_name(cls_id: int, raw_name: str) -> str:
-    return _REAL_CLASS_NAMES.get(cls_id, "possible defect")
+    # The legacy map only covers ids 298-302 from the old 303-class model
+    # that predated the dataset-leakage fix and retrain. The new model is
+    # a clean single-class model and already reports the correct label
+    # ("crack") via raw_name — use that directly. The old model's classes
+    # 0-297 were meaningless numeric placeholders (raw_name == str(cls_id)
+    # e.g. "37", "150") inherited from pre-merge source datasets, so a
+    # purely-numeric raw_name is exactly the signature to still catch and
+    # hide as "possible defect"; any real model label never looks like that.
+    if cls_id in _REAL_CLASS_NAMES:
+        return _REAL_CLASS_NAMES[cls_id]
+    if raw_name and not raw_name.strip().isdigit():
+        return raw_name
+    return "possible defect"
 
 # ── BGR colours for bounding boxes ───────────────────────────
 SEV_COLORS = {
