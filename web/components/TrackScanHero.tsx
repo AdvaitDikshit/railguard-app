@@ -19,7 +19,10 @@ export function TrackScanHero() {
 
         <div className="track-scan-line absolute left-0 top-[14px] h-[62px] w-[2px] bg-accent shadow-[0_0_8px_rgba(163,24,42,0.55)]" />
 
-        <div className="track-scan-marker absolute left-[70%] top-[6px] opacity-0">
+        {/* Box straddles the top rail (rendered at 35% of container height,
+            see RailArt's viewBox) — like a real detection sitting on the
+            rail head, not floating above the track. */}
+        <div className="track-scan-marker absolute left-[70%] top-6 opacity-0">
           <div className="h-4 w-8 rounded-[2px] border-2 border-sev-high" />
           <span className="mt-1 block whitespace-nowrap rounded bg-sev-high px-1 py-0.5 font-mono text-[9px] font-medium text-white">
             CRACK 91%
