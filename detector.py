@@ -26,6 +26,19 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 # Higher = fewer but more reliable detections.
 DEFAULT_CONF = 0.55
 
+# ── per-class trust gate (multi-class model only) ──────────────
+# The Aug 2026 multi-class retrain (crack, spalling, squat, shelling,
+# flaking, broken_rail — see scripts/build_multiclass_dataset.py) only
+# had 240-340 training instances for spalling/squat/shelling/flaking,
+# vs ~5,000 for crack. Validation confirmed those four are unreliable
+# (mAP50 0.19-0.36, missed-detection-dominated, not confusion between
+# classes — see the training audit). crack and broken_rail cleared
+# solid validation numbers (mAP50 0.78 / 0.95) and are trusted at the
+# normal threshold; the other four need a much higher bar to surface
+# at all, until more training data brings their real accuracy up.
+TRUSTED_CLASSES = {"crack", "broken_rail"}
+EXPERIMENTAL_MIN_CONF = 0.75
+
 # ── NMS IoU threshold ─────────────────────────────────────────
 # 0.3 = if two boxes overlap >30% they get merged into one.
 # This is what eliminates duplicate bounding boxes on the same crack.
@@ -428,13 +441,22 @@ class CrackDetector:
         if path and Path(path).exists():
             return Path(path)
         candidates = [
-            # models/best_crack_detector.pt is the canonical output of
-            # scripts/train_model.py — check it first so a fresh retrain is
-            # always picked up. The runs/detect/train* paths are fallbacks
-            # for ad-hoc/manual runs that never got copied there; they used
-            # to be checked FIRST, which meant a stale leftover best.pt in
-            # runs/detect/train silently shadowed every newer retrain.
+            # models/best_multiclass_detector.pt (Aug 2026 retrain — crack,
+            # spalling, squat, shelling, flaking, broken_rail) is the
+            # current model. crack detection on it validated *better* than
+            # the old single-class model (mAP50-95 0.53 vs 0.49) and it
+            # adds broken_rail essentially for free (mAP50 0.95), so it's
+            # a strict upgrade — the four weak classes are handled via
+            # TRUSTED_CLASSES/EXPERIMENTAL_MIN_CONF in detect(), not by
+            # avoiding this model.
+            BASE_DIR / "models" / "best_multiclass_detector.pt",
+            # best_crack_detector.pt is the older single-class model, kept
+            # as a fallback if the multiclass model is ever removed.
             BASE_DIR / "models" / "best_crack_detector.pt",
+            # runs/detect/train* are fallbacks for ad-hoc/manual runs that
+            # never got copied to models/; they used to be checked FIRST,
+            # which meant a stale leftover best.pt there silently shadowed
+            # every newer retrain — see git history for that bug.
             BASE_DIR / "runs" / "detect" / "train"  / "weights" / "best.pt",
             BASE_DIR / "runs" / "detect" / "train2" / "weights" / "best.pt",
             BASE_DIR / "runs" / "detect" / "train3" / "weights" / "best.pt",
@@ -472,6 +494,16 @@ class CrackDetector:
             names   = results.names
 
             for box, conf, cls_id in zip(boxes, confs, cls_ids):
+                class_name = normalize_class_name(int(cls_id), names.get(cls_id, ""))
+
+                # Per-class trust gate — see TRUSTED_CLASSES/EXPERIMENTAL_MIN_CONF
+                # above. A class outside the trusted set needs a much higher
+                # confidence to surface at all, since validation showed those
+                # classes are dominated by missed detections, not near-misses.
+                is_experimental = class_name not in TRUSTED_CLASSES
+                if is_experimental and conf < EXPERIMENTAL_MIN_CONF:
+                    continue
+
                 x1, y1, x2, y2 = map(int, box)
                 bw       = max(0, x2 - x1)
                 bh       = max(0, y2 - y1)
@@ -481,7 +513,7 @@ class CrackDetector:
 
                 detections.append({
                     "class_id":   int(cls_id),
-                    "class_name": normalize_class_name(int(cls_id), names.get(cls_id, "")),
+                    "class_name": class_name,
                     "confidence": float(conf),
                     "bbox":       [x1, y1, x2, y2],
                     "width_px":   bw,
@@ -489,6 +521,7 @@ class CrackDetector:
                     "area_px":    area_px,
                     "area_frac":  area_frac,
                     "size_cat":   size_cat,
+                    "experimental": is_experimental,
                 })
 
         # Sort by area descending (largest crack first)
