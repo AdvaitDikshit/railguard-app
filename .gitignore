@@ -6,9 +6,14 @@
 # dumps. See scripts/download_dataset.py to fetch the dataset instead.
 dataset/
 runs/
-models/
+models/*
 logs/
 *.pt
+
+# Exception: the currently-deployed trained model needs to ship with the
+# repo so the hosted backend can actually run inference — every other
+# checkpoint/training artifact under models/ stays ignored.
+!models/best_multiclass_detector.pt
 
 # ── User-submitted / generated content ─────────────────────────
 static/uploads/
